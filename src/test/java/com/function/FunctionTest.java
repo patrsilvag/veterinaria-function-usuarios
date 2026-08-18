@@ -22,26 +22,35 @@ public class FunctionTest {
      */
     @Test
     public void testHttpTriggerJava() throws Exception {
+
         // Setup
         @SuppressWarnings("unchecked")
         final HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
 
-        final Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("name", "Azure");
-        doReturn(queryParams).when(req).getQueryParameters();
+        // Simulamos un usuario enviado en el body
+        final String usuarioJson = """
+                {
+                    "nombre": "Patricio Silva",
+                    "email": "patricio@veterinaria.cl",
+                    "estado": "ACTIVO"
+                }
+                """;
 
-        final Optional<String> queryBody = Optional.empty();
-        doReturn(queryBody).when(req).getBody();
+        doReturn(Optional.of(usuarioJson)).when(req).getBody();
 
+        // Simulamos el Response Builder
         doAnswer(new Answer<HttpResponseMessage.Builder>() {
             @Override
             public HttpResponseMessage.Builder answer(InvocationOnMock invocation) {
+
                 HttpStatus status = (HttpStatus) invocation.getArguments()[0];
+
                 return new HttpResponseMessageMock.HttpResponseMessageBuilderMock().status(status);
             }
         }).when(req).createResponseBuilder(any(HttpStatus.class));
 
         final ExecutionContext context = mock(ExecutionContext.class);
+
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
         // Invoke

@@ -9,6 +9,7 @@ import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 
+import java.sql.Connection;
 import java.util.Optional;
 
 public class Function {
@@ -20,16 +21,19 @@ public class Function {
 
         context.getLogger().info("Function Usuarios ejecutada.");
 
-        String body = request.getBody().orElse(null);
+        try (Connection connection = OracleConnection.getConnection()) {
 
-        if (body == null || body.isBlank()) {
-            return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
-                    .body("El cuerpo de la solicitud es obligatorio.").build();
+            context.getLogger().info("Conexión a Oracle exitosa.");
+
+            return request.createResponseBuilder(HttpStatus.OK).body("Conexión a Oracle exitosa.")
+                    .build();
+
+        } catch (Exception e) {
+
+            context.getLogger().severe("Error conectando a Oracle: " + e.getMessage());
+
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error conectando a Oracle: " + e.getMessage()).build();
         }
-
-        context.getLogger().info("Usuario recibido: " + body);
-
-        return request.createResponseBuilder(HttpStatus.OK)
-                .body("Usuario recibido correctamente: " + body).build();
     }
 }
