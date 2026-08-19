@@ -1,36 +1,69 @@
 package com.function;
 
-import com.microsoft.azure.functions.*;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import java.util.*;
-import java.util.logging.Logger;
+import com.microsoft.azure.functions.ExecutionContext;
+import com.microsoft.azure.functions.HttpMethod;
+import com.microsoft.azure.functions.HttpRequestMessage;
+import com.microsoft.azure.functions.HttpResponseMessage;
+import com.microsoft.azure.functions.HttpStatus;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
+import java.util.Optional;
+import java.util.logging.Logger;
 
-/**
- * Unit test for Function class.
- */
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+
 public class FunctionTest {
+
     /**
-     * Unit test for HttpTriggerJava method.
+     * Prueba POST /api/Usuarios cuando no se envía body.
+     *
+     * No conecta a Oracle.
      */
     @Test
-    public void testHttpTriggerJava() throws Exception {
+    public void testCrearUsuarioSinBody() {
 
-        // Setup
         @SuppressWarnings("unchecked")
-        final HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
+        HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
 
-        // Simulamos un usuario enviado en el body
-        final String usuarioJson = """
+        // Simulamos POST
+        doReturn(HttpMethod.POST).when(req).getHttpMethod();
+
+        // Simulamos body vacío
+        doReturn(Optional.empty()).when(req).getBody();
+
+        configurarResponseBuilder(req);
+
+        ExecutionContext context = mock(ExecutionContext.class);
+
+        doReturn(Logger.getGlobal()).when(context).getLogger();
+
+        // Invoke
+        HttpResponseMessage ret = new Function().run(req, context);
+
+        // Verify
+        assertEquals(HttpStatus.BAD_REQUEST, ret.getStatus());
+    }
+
+    /**
+     * Prueba POST /api/Usuarios cuando falta nombreUsuario.
+     *
+     * No conecta a Oracle porque la validación ocurre antes del INSERT.
+     */
+    @Test
+    public void testCrearUsuarioSinNombre() {
+
+        @SuppressWarnings("unchecked")
+        HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
+
+        doReturn(HttpMethod.POST).when(req).getHttpMethod();
+
+        String usuarioJson = """
                 {
-                    "nombre": "Patricio Silva",
                     "email": "patricio@veterinaria.cl",
                     "estado": "ACTIVO"
                 }
@@ -38,25 +71,96 @@ public class FunctionTest {
 
         doReturn(Optional.of(usuarioJson)).when(req).getBody();
 
-        // Simulamos el Response Builder
-        doAnswer(new Answer<HttpResponseMessage.Builder>() {
-            @Override
-            public HttpResponseMessage.Builder answer(InvocationOnMock invocation) {
+        configurarResponseBuilder(req);
 
-                HttpStatus status = (HttpStatus) invocation.getArguments()[0];
-
-                return new HttpResponseMessageMock.HttpResponseMessageBuilderMock().status(status);
-            }
-        }).when(req).createResponseBuilder(any(HttpStatus.class));
-
-        final ExecutionContext context = mock(ExecutionContext.class);
+        ExecutionContext context = mock(ExecutionContext.class);
 
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
         // Invoke
-        final HttpResponseMessage ret = new Function().run(req, context);
+        HttpResponseMessage ret = new Function().run(req, context);
 
         // Verify
-        assertEquals(HttpStatus.OK, ret.getStatus());
+        assertEquals(HttpStatus.BAD_REQUEST, ret.getStatus());
+    }
+
+    /**
+     * Prueba POST /api/Usuarios cuando falta email.
+     *
+     * No conecta a Oracle.
+     */
+    @Test
+    public void testCrearUsuarioSinEmail() {
+
+        @SuppressWarnings("unchecked")
+        HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
+
+        doReturn(HttpMethod.POST).when(req).getHttpMethod();
+
+        String usuarioJson = """
+                {
+                    "nombreUsuario": "Patricio",
+                    "estado": "ACTIVO"
+                }
+                """;
+
+        doReturn(Optional.of(usuarioJson)).when(req).getBody();
+
+        configurarResponseBuilder(req);
+
+        ExecutionContext context = mock(ExecutionContext.class);
+
+        doReturn(Logger.getGlobal()).when(context).getLogger();
+
+        HttpResponseMessage ret = new Function().run(req, context);
+
+        assertEquals(HttpStatus.BAD_REQUEST, ret.getStatus());
+    }
+
+    /**
+     * Prueba POST /api/Usuarios cuando falta estado.
+     *
+     * No conecta a Oracle.
+     */
+    @Test
+    public void testCrearUsuarioSinEstado() {
+
+        @SuppressWarnings("unchecked")
+        HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
+
+        doReturn(HttpMethod.POST).when(req).getHttpMethod();
+
+        String usuarioJson = """
+                {
+                    "nombreUsuario": "Patricio",
+                    "email": "patricio@veterinaria.cl"
+                }
+                """;
+
+        doReturn(Optional.of(usuarioJson)).when(req).getBody();
+
+        configurarResponseBuilder(req);
+
+        ExecutionContext context = mock(ExecutionContext.class);
+
+        doReturn(Logger.getGlobal()).when(context).getLogger();
+
+        HttpResponseMessage ret = new Function().run(req, context);
+
+        assertEquals(HttpStatus.BAD_REQUEST, ret.getStatus());
+    }
+
+    /**
+     * Configura el Response Builder utilizado por los tests.
+     */
+    private void configurarResponseBuilder(HttpRequestMessage<Optional<String>> req) {
+
+        doAnswer(invocation -> {
+
+            HttpStatus status = (HttpStatus) invocation.getArguments()[0];
+
+            return new HttpResponseMessageMock.HttpResponseMessageBuilderMock().status(status);
+
+        }).when(req).createResponseBuilder(any(HttpStatus.class));
     }
 }
