@@ -30,10 +30,8 @@ public class FunctionTest {
         @SuppressWarnings("unchecked")
         HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
 
-        // Simulamos POST
         doReturn(HttpMethod.POST).when(req).getHttpMethod();
 
-        // Simulamos body vacío
         doReturn(Optional.empty()).when(req).getBody();
 
         configurarResponseBuilder(req);
@@ -42,10 +40,8 @@ public class FunctionTest {
 
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
-        // Invoke
         HttpResponseMessage ret = new Function().run(req, context);
 
-        // Verify
         assertEquals(HttpStatus.BAD_REQUEST, ret.getStatus());
     }
 
@@ -65,7 +61,8 @@ public class FunctionTest {
         String usuarioJson = """
                 {
                     "email": "patricio@veterinaria.cl",
-                    "estado": "ACTIVO"
+                    "estado": "ACTIVO",
+                    "idRol": 1
                 }
                 """;
 
@@ -77,10 +74,8 @@ public class FunctionTest {
 
         doReturn(Logger.getGlobal()).when(context).getLogger();
 
-        // Invoke
         HttpResponseMessage ret = new Function().run(req, context);
 
-        // Verify
         assertEquals(HttpStatus.BAD_REQUEST, ret.getStatus());
     }
 
@@ -100,7 +95,8 @@ public class FunctionTest {
         String usuarioJson = """
                 {
                     "nombreUsuario": "Patricio",
-                    "estado": "ACTIVO"
+                    "estado": "ACTIVO",
+                    "idRol": 1
                 }
                 """;
 
@@ -133,7 +129,42 @@ public class FunctionTest {
         String usuarioJson = """
                 {
                     "nombreUsuario": "Patricio",
-                    "email": "patricio@veterinaria.cl"
+                    "email": "patricio@veterinaria.cl",
+                    "idRol": 1
+                }
+                """;
+
+        doReturn(Optional.of(usuarioJson)).when(req).getBody();
+
+        configurarResponseBuilder(req);
+
+        ExecutionContext context = mock(ExecutionContext.class);
+
+        doReturn(Logger.getGlobal()).when(context).getLogger();
+
+        HttpResponseMessage ret = new Function().run(req, context);
+
+        assertEquals(HttpStatus.BAD_REQUEST, ret.getStatus());
+    }
+
+    /**
+     * Prueba POST /api/Usuarios cuando falta idRol.
+     *
+     * No conecta a Oracle porque la validación ocurre antes del INSERT.
+     */
+    @Test
+    public void testCrearUsuarioSinIdRol() {
+
+        @SuppressWarnings("unchecked")
+        HttpRequestMessage<Optional<String>> req = mock(HttpRequestMessage.class);
+
+        doReturn(HttpMethod.POST).when(req).getHttpMethod();
+
+        String usuarioJson = """
+                {
+                    "nombreUsuario": "Patricio",
+                    "email": "patricio@veterinaria.cl",
+                    "estado": "ACTIVO"
                 }
                 """;
 
