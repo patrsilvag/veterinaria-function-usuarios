@@ -540,14 +540,10 @@ public class Function {
         } catch (Exception e) {
 
             context.getLogger().severe(
-                    "Error creando usuario: "
-                            + e.getMessage());
+                    "ERROR CREANDO USUARIO: " + e.getClass().getName() + " - " + e.getMessage());
 
-            return request
-                    .createResponseBuilder(
-                            HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                            "No fue posible crear el usuario.")
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    "Error creando usuario: " + e.getClass().getName() + " - " + e.getMessage())
                     .build();
         }
     }
