@@ -36,6 +36,12 @@ public class OracleConnection {
         System.out.println(
                 "TNS_ADMIN System Property = " + System.getProperty("oracle.net.tns_admin"));
 
-        return DriverManager.getConnection(url, username, password);
+        System.out.println(">>> ANTES DE DriverManager.getConnection()");
+
+        Connection connection = DriverManager.getConnection(url, username, password);
+
+        System.out.println(">>> CONEXION ORACLE ESTABLECIDA");
+
+        return connection;
     }
 }

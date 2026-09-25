@@ -1,5 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.function</groupId>
@@ -12,17 +15,23 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>21</java.version>
+
         <azure.functions.maven.plugin.version>1.40.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.2.2</azure.functions.java.library.version>
-        <functionAppName>veterinaria-function-usuarios-1787071179861</functionAppName>
+
+        <!-- CAMBIAR por el nombre REAL de la Function App de Usuarios -->
+        <functionAppName>funcionusuarios</functionAppName>
     </properties>
 
     <dependencies>
+
+        <!-- Azure Functions -->
         <dependency>
             <groupId>com.microsoft.azure.functions</groupId>
             <artifactId>azure-functions-java-library</artifactId>
             <version>${azure.functions.java.library.version}</version>
         </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -38,7 +47,14 @@
             <scope>test</scope>
         </dependency>
 
-<!-- Oracle JDBC -->
+        <!-- Azure Event Grid -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-messaging-eventgrid</artifactId>
+            <version>4.31.8</version>
+        </dependency>
+
+        <!-- Oracle JDBC -->
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>
@@ -67,7 +83,10 @@
     </dependencies>
 
     <build>
+
         <plugins>
+
+            <!-- Compilación Java -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -78,39 +97,74 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
+
+            <!-- Copiar Wallet al paquete de Azure -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+
+                <executions>
+                    <execution>
+                        <id>copy-wallets</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+
+                        <configuration>
+                            <outputDirectory>
+                                ${project.build.directory}/azure-functions/${functionAppName}/wallets
+                            </outputDirectory>
+
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/wallets</directory>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Azure Functions Maven Plugin -->
             <plugin>
                 <groupId>com.microsoft.azure</groupId>
                 <artifactId>azure-functions-maven-plugin</artifactId>
                 <version>${azure.functions.maven.plugin.version}</version>
+
                 <configuration>
-                    <!-- function app name -->
+
                     <appName>${functionAppName}</appName>
-                    <!-- function app resource group -->
-                    <resourceGroup>java-functions-group</resourceGroup>
-                    <!-- function app region-->
-                    <!-- refers https://github.com/microsoft/azure-maven-plugins/wiki/Azure-Functions:-Configuration-Details#supported-regions for all valid values -->
-                    <region>westus</region>
-                    <!-- function app service plan name -->
-                    <appServicePlanName>java-functions-app-service-plan</appServicePlanName>
-                    <!-- function pricingTier, default to be consumption if not specified -->
-                    <!-- refers https://github.com/microsoft/azure-maven-plugins/wiki/Azure-Functions:-Configuration-Details#supported-pricing-tiers for all valid values -->
-                    <!-- <pricingTier></pricingTier> -->
-                    <!-- Whether to disable application insights, default is false -->
-                    <!-- refers https://github.com/microsoft/azure-maven-plugins/wiki/Azure-Functions:-Configuration-Details for all valid configurations for application insights-->
-                    <!-- <disableAppInsights></disableAppInsights> -->
+
+                    <!-- Resource Group real -->
+                    <resourceGroup>gr-psilva-veterinaria</resourceGroup>
+
+                    <!-- Región real -->
+                    <region>eastus</region>
+
+                    <appServicePlanName>ASP-grpsilvaveterinaria-a52e</appServicePlanName>
+
                     <runtime>
-                        <!-- runtime os, could be windows, linux (default) or docker-->
-                        <!-- <os>linux</os> -->
-                        <!-- runtime Java version, could be 8, 11, 17, 21 (default) -->
                         <javaVersion>21</javaVersion>
                     </runtime>
+
                     <appSettings>
                         <property>
                             <name>FUNCTIONS_EXTENSION_VERSION</name>
                             <value>~4</value>
                         </property>
+                        <property>
+                            <name>EVENT_GRID_TOPIC_ENDPOINT</name>
+                            <value>
+                                https://veterinaria-eventgrid.westus3-1.eventgrid.azure.net/api/events</value>
+                        </property>
                     </appSettings>
+
                 </configuration>
+
                 <executions>
                     <execution>
                         <id>package-functions</id>
@@ -119,11 +173,14 @@
                         </goals>
                     </execution>
                 </executions>
+
             </plugin>
-            <!--Remove obj folder generated by .NET SDK in maven clean-->
+
+            <!-- Maven Clean -->
             <plugin>
                 <artifactId>maven-clean-plugin</artifactId>
                 <version>3.1.0</version>
+
                 <configuration>
                     <filesets>
                         <fileset>
@@ -131,7 +188,11 @@
                         </fileset>
                     </filesets>
                 </configuration>
+
             </plugin>
+
         </plugins>
+
     </build>
+
 </project>

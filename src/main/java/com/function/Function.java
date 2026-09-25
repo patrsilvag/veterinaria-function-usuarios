@@ -4,7 +4,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Optional;
-
+import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.util.BinaryData;
+import com.azure.messaging.eventgrid.EventGridEvent;
+import com.azure.messaging.eventgrid.EventGridPublisherClient;
+import com.azure.messaging.eventgrid.EventGridPublisherClientBuilder;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -18,21 +22,15 @@ import com.microsoft.azure.functions.annotation.HttpTrigger;
 public class Function {
 
     /**
-     * POST /api/Usuarios
-     * GET  /api/Usuarios
+     * POST /api/Usuarios GET /api/Usuarios
      */
     @FunctionName("Usuarios")
-    public HttpResponseMessage run(
-            @HttpTrigger(
-                    name = "req",
-                    methods = {HttpMethod.GET, HttpMethod.POST},
-                    authLevel = AuthorizationLevel.ANONYMOUS)
-            HttpRequestMessage<Optional<String>> request,
+    public HttpResponseMessage run(@HttpTrigger(name = "req",
+            methods = {HttpMethod.GET, HttpMethod.POST},
+            authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
 
-        context.getLogger().info(
-                "Function Usuarios ejecutada. Método: "
-                        + request.getHttpMethod());
+        context.getLogger().info("Function Usuarios ejecutada. Método: " + request.getHttpMethod());
 
         // GET - Consultar todos los usuarios
         if (request.getHttpMethod() == HttpMethod.GET) {
@@ -44,10 +42,8 @@ public class Function {
             return crearUsuario(request, context);
         }
 
-        return request
-                .createResponseBuilder(HttpStatus.METHOD_NOT_ALLOWED)
-                .body("Método HTTP no permitido.")
-                .build();
+        return request.createResponseBuilder(HttpStatus.METHOD_NOT_ALLOWED)
+                .body("Método HTTP no permitido.").build();
     }
 
     /**
@@ -55,17 +51,12 @@ public class Function {
      */
     @FunctionName("UsuarioPorId")
     public HttpResponseMessage obtenerPorId(
-            @HttpTrigger(
-                    name = "req",
-                    methods = {HttpMethod.GET},
+            @HttpTrigger(name = "req", methods = {HttpMethod.GET},
                     authLevel = AuthorizationLevel.ANONYMOUS,
-                    route = "Usuarios/{id}")
-            HttpRequestMessage<Optional<String>> request,
-            @BindingName("id") String id,
-            final ExecutionContext context) {
+                    route = "Usuarios/{id}") HttpRequestMessage<Optional<String>> request,
+            @BindingName("id") String id, final ExecutionContext context) {
 
-        context.getLogger().info(
-                "Function UsuarioPorId ejecutada.");
+        context.getLogger().info("Function UsuarioPorId ejecutada.");
 
         long idUsuario;
 
@@ -73,24 +64,17 @@ public class Function {
             idUsuario = Long.parseLong(id);
 
             if (idUsuario <= 0) {
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El ID debe ser mayor que cero.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El ID debe ser mayor que cero.").build();
             }
 
         } catch (NumberFormatException e) {
 
-            return request
-                    .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                    .body("El ID debe ser numérico.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                    .body("El ID debe ser numérico.").build();
         }
 
-        return obtenerUsuarioPorId(
-                request,
-                context,
-                idUsuario);
+        return obtenerUsuarioPorId(request, context, idUsuario);
     }
 
     /**
@@ -98,17 +82,12 @@ public class Function {
      */
     @FunctionName("ActualizarUsuario")
     public HttpResponseMessage actualizarUsuario(
-            @HttpTrigger(
-                    name = "req",
-                    methods = {HttpMethod.PUT},
+            @HttpTrigger(name = "req", methods = {HttpMethod.PUT},
                     authLevel = AuthorizationLevel.ANONYMOUS,
-                    route = "Usuarios/{id}")
-            HttpRequestMessage<Optional<String>> request,
-            @BindingName("id") String id,
-            final ExecutionContext context) {
+                    route = "Usuarios/{id}") HttpRequestMessage<Optional<String>> request,
+            @BindingName("id") String id, final ExecutionContext context) {
 
-        context.getLogger().info(
-                "Function ActualizarUsuario ejecutada.");
+        context.getLogger().info("Function ActualizarUsuario ejecutada.");
 
         long idUsuario;
 
@@ -116,76 +95,57 @@ public class Function {
             idUsuario = Long.parseLong(id);
 
             if (idUsuario <= 0) {
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El ID debe ser mayor que cero.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El ID debe ser mayor que cero.").build();
             }
 
         } catch (NumberFormatException e) {
 
-            return request
-                    .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                    .body("El ID debe ser numérico.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                    .body("El ID debe ser numérico.").build();
         }
 
         Optional<String> body = request.getBody();
 
         if (body.isEmpty() || body.get().isBlank()) {
-            return request
-                    .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                    .body("Debe enviar los datos del usuario.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                    .body("Debe enviar los datos del usuario.").build();
         }
 
         String json = body.get();
 
         try {
 
-            String nombreUsuario =
-                    obtenerValor(json, "nombreUsuario");
+            String nombreUsuario = obtenerValor(json, "nombreUsuario");
 
-            String email =
-                    obtenerValor(json, "email");
+            String email = obtenerValor(json, "email");
 
-            String estado =
-                    obtenerValor(json, "estado");
+            String estado = obtenerValor(json, "estado");
 
-            String idRolTexto =
-                    obtenerValor(json, "idRol");
+            String idRolTexto = obtenerValor(json, "idRol");
 
-            if (nombreUsuario == null
-                    || nombreUsuario.isBlank()) {
+            if (nombreUsuario == null || nombreUsuario.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo nombreUsuario es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo nombreUsuario es obligatorio.").build();
             }
 
             if (email == null || email.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo email es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo email es obligatorio.").build();
             }
 
             if (estado == null || estado.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo estado es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo estado es obligatorio.").build();
             }
 
             if (idRolTexto == null || idRolTexto.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo idRol es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo idRol es obligatorio.").build();
             }
 
             long idRol;
@@ -194,18 +154,14 @@ public class Function {
                 idRol = Long.parseLong(idRolTexto);
 
                 if (idRol <= 0) {
-                    return request
-                            .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                            .body("El idRol debe ser mayor que cero.")
-                            .build();
+                    return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                            .body("El idRol debe ser mayor que cero.").build();
                 }
 
             } catch (NumberFormatException e) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El idRol debe ser numérico.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El idRol debe ser numérico.").build();
             }
 
             String sql = """
@@ -218,10 +174,8 @@ public class Function {
                     WHERE ID_USUARIO = ?
                     """;
 
-            try (Connection connection =
-                         OracleConnection.getConnection();
-                 PreparedStatement statement =
-                         connection.prepareStatement(sql)) {
+            try (Connection connection = OracleConnection.getConnection();
+                    PreparedStatement statement = connection.prepareStatement(sql)) {
 
                 connection.setAutoCommit(false);
 
@@ -237,12 +191,8 @@ public class Function {
 
                     connection.rollback();
 
-                    return request
-                            .createResponseBuilder(HttpStatus.NOT_FOUND)
-                            .body(
-                                    "No existe un usuario con ID "
-                                            + idUsuario)
-                            .build();
+                    return request.createResponseBuilder(HttpStatus.NOT_FOUND)
+                            .body("No existe un usuario con ID " + idUsuario).build();
                 }
 
                 connection.commit();
@@ -256,38 +206,20 @@ public class Function {
                             "email": "%s",
                             "estado": "%s"
                         }
-                        """.formatted(
-                        idUsuario,
-                        idRol,
-                        nombreUsuario,
-                        email,
-                        estado);
+                        """.formatted(idUsuario, idRol, nombreUsuario, email, estado);
 
-                context.getLogger().info(
-                        "Usuario actualizado correctamente. ID: "
-                                + idUsuario);
+                context.getLogger().info("Usuario actualizado correctamente. ID: " + idUsuario);
 
-                return request
-                        .createResponseBuilder(HttpStatus.OK)
-                        .header(
-                                "Content-Type",
-                                "application/json")
-                        .body(response)
-                        .build();
+                return request.createResponseBuilder(HttpStatus.OK)
+                        .header("Content-Type", "application/json").body(response).build();
             }
 
         } catch (Exception e) {
 
-            context.getLogger().severe(
-                    "Error actualizando usuario: "
-                            + e.getMessage());
+            context.getLogger().severe("Error actualizando usuario: " + e.getMessage());
 
-            return request
-                    .createResponseBuilder(
-                            HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                            "No fue posible actualizar el usuario.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("No fue posible actualizar el usuario.").build();
         }
     }
 
@@ -296,17 +228,12 @@ public class Function {
      */
     @FunctionName("EliminarUsuario")
     public HttpResponseMessage eliminarUsuario(
-            @HttpTrigger(
-                    name = "req",
-                    methods = {HttpMethod.DELETE},
+            @HttpTrigger(name = "req", methods = {HttpMethod.DELETE},
                     authLevel = AuthorizationLevel.ANONYMOUS,
-                    route = "Usuarios/{id}")
-            HttpRequestMessage<Optional<String>> request,
-            @BindingName("id") String id,
-            final ExecutionContext context) {
+                    route = "Usuarios/{id}") HttpRequestMessage<Optional<String>> request,
+            @BindingName("id") String id, final ExecutionContext context) {
 
-        context.getLogger().info(
-                "Function EliminarUsuario ejecutada.");
+        context.getLogger().info("Function EliminarUsuario ejecutada.");
 
         long idUsuario;
 
@@ -315,18 +242,14 @@ public class Function {
             idUsuario = Long.parseLong(id);
 
             if (idUsuario <= 0) {
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El ID debe ser mayor que cero.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El ID debe ser mayor que cero.").build();
             }
 
         } catch (NumberFormatException e) {
 
-            return request
-                    .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                    .body("El ID debe ser numérico.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                    .body("El ID debe ser numérico.").build();
         }
 
         String sql = """
@@ -334,10 +257,8 @@ public class Function {
                 WHERE ID_USUARIO = ?
                 """;
 
-        try (Connection connection =
-                     OracleConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+        try (Connection connection = OracleConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
 
             connection.setAutoCommit(false);
 
@@ -349,105 +270,73 @@ public class Function {
 
                 connection.rollback();
 
-                return request
-                        .createResponseBuilder(HttpStatus.NOT_FOUND)
-                        .body(
-                                "No existe un usuario con ID "
-                                        + idUsuario)
-                        .build();
+                return request.createResponseBuilder(HttpStatus.NOT_FOUND)
+                        .body("No existe un usuario con ID " + idUsuario).build();
             }
 
             connection.commit();
 
-            context.getLogger().info(
-                    "Usuario eliminado correctamente. ID: "
-                            + idUsuario);
+            context.getLogger().info("Usuario eliminado correctamente. ID: " + idUsuario);
 
-            return request
-                    .createResponseBuilder(HttpStatus.OK)
-                    .body(
-                            "Usuario eliminado correctamente. ID: "
-                                    + idUsuario)
-                    .build();
+            return request.createResponseBuilder(HttpStatus.OK)
+                    .body("Usuario eliminado correctamente. ID: " + idUsuario).build();
 
         } catch (Exception e) {
 
-            context.getLogger().severe(
-                    "Error eliminando usuario: "
-                            + e.getMessage());
+            context.getLogger().severe("Error eliminando usuario: " + e.getMessage());
 
-            return request
-                    .createResponseBuilder(
-                            HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                            "No fue posible eliminar el usuario.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("No fue posible eliminar el usuario.").build();
         }
     }
 
     /**
      * POST /api/Usuarios
      */
-    private HttpResponseMessage crearUsuario(
-            HttpRequestMessage<Optional<String>> request,
+    private HttpResponseMessage crearUsuario(HttpRequestMessage<Optional<String>> request,
             ExecutionContext context) {
 
         Optional<String> body = request.getBody();
 
         if (body.isEmpty() || body.get().isBlank()) {
-            return request
-                    .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                    .body("Debe enviar los datos del usuario.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                    .body("Debe enviar los datos del usuario.").build();
         }
 
         String json = body.get();
 
         try {
 
-            String nombreUsuario =
-                    obtenerValor(json, "nombreUsuario");
+            String nombreUsuario = obtenerValor(json, "nombreUsuario");
 
-            String email =
-                    obtenerValor(json, "email");
+            String email = obtenerValor(json, "email");
 
-            String estado =
-                    obtenerValor(json, "estado");
+            String estado = obtenerValor(json, "estado");
 
-            String idRolTexto =
-                    obtenerValor(json, "idRol");
+            String idRolTexto = obtenerValor(json, "idRol");
 
-            if (nombreUsuario == null
-                    || nombreUsuario.isBlank()) {
+            if (nombreUsuario == null || nombreUsuario.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo nombreUsuario es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo nombreUsuario es obligatorio.").build();
             }
 
             if (email == null || email.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo email es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo email es obligatorio.").build();
             }
 
             if (estado == null || estado.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo estado es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo estado es obligatorio.").build();
             }
 
             if (idRolTexto == null || idRolTexto.isBlank()) {
 
-                return request
-                        .createResponseBuilder(HttpStatus.BAD_REQUEST)
-                        .body("El campo idRol es obligatorio.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El campo idRol es obligatorio.").build();
             }
 
             long idRol;
@@ -457,22 +346,14 @@ public class Function {
                 idRol = Long.parseLong(idRolTexto);
 
                 if (idRol <= 0) {
-                    return request
-                            .createResponseBuilder(
-                                    HttpStatus.BAD_REQUEST)
-                            .body(
-                                    "El idRol debe ser mayor que cero.")
-                            .build();
+                    return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                            .body("El idRol debe ser mayor que cero.").build();
                 }
 
             } catch (NumberFormatException e) {
 
-                return request
-                        .createResponseBuilder(
-                                HttpStatus.BAD_REQUEST)
-                        .body(
-                                "El idRol debe ser numérico.")
-                        .build();
+                return request.createResponseBuilder(HttpStatus.BAD_REQUEST)
+                        .body("El idRol debe ser numérico.").build();
             }
 
             String sql = """
@@ -482,10 +363,9 @@ public class Function {
                         (?, ?, ?, ?)
                     """;
 
-            try (Connection connection =
-                         OracleConnection.getConnection();
-                 PreparedStatement statement =
-                         connection.prepareStatement(sql)) {
+            try (Connection connection = OracleConnection.getConnection();
+                    PreparedStatement statement =
+                            connection.prepareStatement(sql, new String[] {"ID_USUARIO"})) {
 
                 connection.setAutoCommit(false);
 
@@ -500,41 +380,44 @@ public class Function {
 
                     connection.rollback();
 
-                    return request
-                            .createResponseBuilder(
-                                    HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body(
-                                    "No fue posible crear el usuario.")
-                            .build();
+                    return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body("No fue posible crear el usuario.").build();
+                }
+
+                long idUsuario;
+
+                try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+
+                    if (!generatedKeys.next()) {
+                        connection.rollback();
+
+                        return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body("No fue posible obtener el ID del usuario creado.").build();
+                    }
+
+                    idUsuario = generatedKeys.getLong(1);
                 }
 
                 connection.commit();
 
+                publicarEventoUsuarioCreado(idUsuario, idRol, nombreUsuario, email, estado,
+                        context);
+
                 String response = """
                         {
                             "mensaje": "Usuario creado correctamente",
+                            "idUsuario": %d,
                             "idRol": %d,
                             "nombreUsuario": "%s",
                             "email": "%s",
                             "estado": "%s"
                         }
-                        """.formatted(
-                        idRol,
-                        nombreUsuario,
-                        email,
-                        estado);
+                        """.formatted(idUsuario, idRol, nombreUsuario, email, estado);
 
-                context.getLogger().info(
-                        "Usuario creado correctamente.");
+                context.getLogger().info("Usuario creado correctamente. ID: " + idUsuario);
 
-                return request
-                        .createResponseBuilder(
-                                HttpStatus.CREATED)
-                        .header(
-                                "Content-Type",
-                                "application/json")
-                        .body(response)
-                        .build();
+                return request.createResponseBuilder(HttpStatus.CREATED)
+                        .header("Content-Type", "application/json").body(response).build();
             }
 
         } catch (Exception e) {
@@ -549,10 +432,45 @@ public class Function {
     }
 
     /**
+     * Publica el evento UsuarioCreado en Azure Event Grid.
+     */
+    private void publicarEventoUsuarioCreado(long idUsuario, long idRol, String nombreUsuario,
+            String email, String estado, ExecutionContext context) {
+
+        String endpoint = System.getenv("EVENT_GRID_TOPIC_ENDPOINT");
+
+        String accessKey = System.getenv("EVENT_GRID_ACCESS_KEY");
+
+        if (endpoint == null || endpoint.isBlank()) {
+            throw new IllegalStateException("EVENT_GRID_TOPIC_ENDPOINT no está configurado.");
+        }
+
+        if (accessKey == null || accessKey.isBlank()) {
+            throw new IllegalStateException("EVENT_GRID_ACCESS_KEY no está configurado.");
+        }
+
+        String eventData = String.format(
+                "{\n" + "    \"idUsuario\": %d,\n" + "    \"idRol\": %d,\n"
+                        + "    \"nombreUsuario\": \"%s\",\n" + "    \"email\": \"%s\",\n"
+                        + "    \"estado\": \"%s\"\n" + "}",
+                idUsuario, idRol, nombreUsuario, email, estado);
+
+        EventGridEvent evento = new EventGridEvent("/veterinaria/usuarios", "UsuarioCreado",
+                BinaryData.fromString(eventData), "1.0");
+
+        EventGridPublisherClient<EventGridEvent> client = new EventGridPublisherClientBuilder()
+                .endpoint(endpoint).credential(new AzureKeyCredential(accessKey))
+                .buildEventGridEventPublisherClient();
+
+        client.sendEvent(evento);
+
+        context.getLogger().info("Evento UsuarioCreado publicado correctamente en Event Grid.");
+    }
+
+    /**
      * GET /api/Usuarios
      */
-    private HttpResponseMessage obtenerUsuarios(
-            HttpRequestMessage<Optional<String>> request,
+    private HttpResponseMessage obtenerUsuarios(HttpRequestMessage<Optional<String>> request,
             ExecutionContext context) {
 
         String sql = """
@@ -566,17 +484,13 @@ public class Function {
                 ORDER BY ID_USUARIO
                 """;
 
-        StringBuilder response =
-                new StringBuilder();
+        StringBuilder response = new StringBuilder();
 
         response.append("[");
 
-        try (Connection connection =
-                     OracleConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql);
-             ResultSet resultSet =
-                     statement.executeQuery()) {
+        try (Connection connection = OracleConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet resultSet = statement.executeQuery()) {
 
             boolean primero = true;
 
@@ -594,11 +508,8 @@ public class Function {
                             "email": "%s",
                             "estado": "%s"
                         }
-                        """.formatted(
-                        resultSet.getLong("ID_USUARIO"),
-                        resultSet.getLong("ID_ROL"),
-                        resultSet.getString("NOMBRE_USUARIO"),
-                        resultSet.getString("EMAIL"),
+                        """.formatted(resultSet.getLong("ID_USUARIO"), resultSet.getLong("ID_ROL"),
+                        resultSet.getString("NOMBRE_USUARIO"), resultSet.getString("EMAIL"),
                         resultSet.getString("ESTADO")));
 
                 primero = false;
@@ -606,39 +517,25 @@ public class Function {
 
             response.append("]");
 
-            context.getLogger().info(
-                    "Usuarios consultados correctamente.");
+            context.getLogger().info("Usuarios consultados correctamente.");
 
-            return request
-                    .createResponseBuilder(HttpStatus.OK)
-                    .header(
-                            "Content-Type",
-                            "application/json")
-                    .body(response.toString())
-                    .build();
+            return request.createResponseBuilder(HttpStatus.OK)
+                    .header("Content-Type", "application/json").body(response.toString()).build();
 
         } catch (Exception e) {
 
-            context.getLogger().severe(
-                    "Error consultando usuarios: "
-                            + e.getMessage());
+            context.getLogger().severe("Error consultando usuarios: " + e.getMessage());
 
-            return request
-                    .createResponseBuilder(
-                            HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                            "No fue posible consultar los usuarios.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("No fue posible consultar los usuarios.").build();
         }
     }
 
     /**
      * GET /api/Usuarios/{id}
      */
-    private HttpResponseMessage obtenerUsuarioPorId(
-            HttpRequestMessage<Optional<String>> request,
-            ExecutionContext context,
-            long idUsuario) {
+    private HttpResponseMessage obtenerUsuarioPorId(HttpRequestMessage<Optional<String>> request,
+            ExecutionContext context, long idUsuario) {
 
         String sql = """
                 SELECT
@@ -651,29 +548,19 @@ public class Function {
                 WHERE ID_USUARIO = ?
                 """;
 
-        try (Connection connection =
-                     OracleConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+        try (Connection connection = OracleConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, idUsuario);
 
-            try (ResultSet resultSet =
-                         statement.executeQuery()) {
+            try (ResultSet resultSet = statement.executeQuery()) {
 
                 if (!resultSet.next()) {
 
-                    context.getLogger().info(
-                            "Usuario no encontrado. ID: "
-                                    + idUsuario);
+                    context.getLogger().info("Usuario no encontrado. ID: " + idUsuario);
 
-                    return request
-                            .createResponseBuilder(
-                                    HttpStatus.NOT_FOUND)
-                            .body(
-                                    "No existe un usuario con ID "
-                                            + idUsuario)
-                            .build();
+                    return request.createResponseBuilder(HttpStatus.NOT_FOUND)
+                            .body("No existe un usuario con ID " + idUsuario).build();
                 }
 
                 String response = """
@@ -684,38 +571,22 @@ public class Function {
                             "email": "%s",
                             "estado": "%s"
                         }
-                        """.formatted(
-                        resultSet.getLong("ID_USUARIO"),
-                        resultSet.getLong("ID_ROL"),
-                        resultSet.getString("NOMBRE_USUARIO"),
-                        resultSet.getString("EMAIL"),
+                        """.formatted(resultSet.getLong("ID_USUARIO"), resultSet.getLong("ID_ROL"),
+                        resultSet.getString("NOMBRE_USUARIO"), resultSet.getString("EMAIL"),
                         resultSet.getString("ESTADO"));
 
-                context.getLogger().info(
-                        "Usuario encontrado. ID: "
-                                + idUsuario);
+                context.getLogger().info("Usuario encontrado. ID: " + idUsuario);
 
-                return request
-                        .createResponseBuilder(HttpStatus.OK)
-                        .header(
-                                "Content-Type",
-                                "application/json")
-                        .body(response)
-                        .build();
+                return request.createResponseBuilder(HttpStatus.OK)
+                        .header("Content-Type", "application/json").body(response).build();
             }
 
         } catch (Exception e) {
 
-            context.getLogger().severe(
-                    "Error consultando usuario: "
-                            + e.getMessage());
+            context.getLogger().severe("Error consultando usuario: " + e.getMessage());
 
-            return request
-                    .createResponseBuilder(
-                            HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                            "No fue posible consultar el usuario.")
-                    .build();
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("No fue posible consultar el usuario.").build();
         }
     }
 
@@ -724,24 +595,17 @@ public class Function {
      *
      * Para idRol también permite leer el valor numérico.
      */
-    private String obtenerValor(
-            String json,
-            String campo) {
+    private String obtenerValor(String json, String campo) {
 
-        String busqueda =
-                "\"" + campo + "\"";
+        String busqueda = "\"" + campo + "\"";
 
-        int posicionCampo =
-                json.indexOf(busqueda);
+        int posicionCampo = json.indexOf(busqueda);
 
         if (posicionCampo == -1) {
             return null;
         }
 
-        int inicio =
-                json.indexOf(
-                        ":",
-                        posicionCampo);
+        int inicio = json.indexOf(":", posicionCampo);
 
         if (inicio == -1) {
             return null;
@@ -749,9 +613,7 @@ public class Function {
 
         inicio++;
 
-        while (inicio < json.length()
-                && Character.isWhitespace(
-                        json.charAt(inicio))) {
+        while (inicio < json.length() && Character.isWhitespace(json.charAt(inicio))) {
 
             inicio++;
         }
@@ -765,9 +627,7 @@ public class Function {
 
             int fin = inicio;
 
-            while (fin < json.length()
-                    && Character.isDigit(
-                            json.charAt(fin))) {
+            while (fin < json.length() && Character.isDigit(json.charAt(fin))) {
 
                 fin++;
             }
@@ -776,9 +636,7 @@ public class Function {
                 return null;
             }
 
-            return json.substring(
-                    inicio,
-                    fin);
+            return json.substring(inicio, fin);
         }
 
         // Campos String
@@ -788,17 +646,12 @@ public class Function {
 
         inicio++;
 
-        int fin =
-                json.indexOf(
-                        "\"",
-                        inicio);
+        int fin = json.indexOf("\"", inicio);
 
         if (fin == -1) {
             return null;
         }
 
-        return json.substring(
-                inicio,
-                fin);
+        return json.substring(inicio, fin);
     }
 }
